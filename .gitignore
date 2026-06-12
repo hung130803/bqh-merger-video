@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.hypothesis/
+venv/
+.venv/
+
+# Build / đóng gói
+build/
+dist/
+*.spec
+
+# Cài đặt/cá nhân của người dùng (không đẩy lên git)
+.batch_video_merger.json
+.batch_video_merger_templates/
+
+# Hệ điều hành
+Thumbs.db
+.DS_Store
+
+# Thư mục test/output tạm
+Output/
+test_output/
