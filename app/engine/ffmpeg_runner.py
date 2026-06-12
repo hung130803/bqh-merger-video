@@ -24,6 +24,22 @@ def _no_window_flag() -> int:
     return getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
+def _default_ffmpeg() -> str:
+    try:
+        from .ffmpeg_paths import ffmpeg_path
+        return ffmpeg_path()
+    except Exception:
+        return "ffmpeg"
+
+
+def _default_ffprobe() -> str:
+    try:
+        from .ffmpeg_paths import ffprobe_path
+        return ffprobe_path()
+    except Exception:
+        return "ffprobe"
+
+
 def _escape_drawtext(text: str) -> str:
     """Escape ký tự đặc biệt cho filter drawtext của ffmpeg."""
     text = text.replace("\\", "\\\\")
@@ -77,10 +93,10 @@ class FfmpegRunner:
     """Lớp bọc ffmpeg/ffprobe."""
 
     def __init__(
-        self, ffmpeg_path: str = "ffmpeg", ffprobe_path: str = "ffprobe"
+        self, ffmpeg_path: str | None = None, ffprobe_path: str | None = None
     ) -> None:
-        self.ffmpeg_path = ffmpeg_path
-        self.ffprobe_path = ffprobe_path
+        self.ffmpeg_path = ffmpeg_path or _default_ffmpeg()
+        self.ffprobe_path = ffprobe_path or _default_ffprobe()
 
     # ------------------------------------------------------------------ probe
     def _run_probe(self, cmd: list[str]) -> str:
