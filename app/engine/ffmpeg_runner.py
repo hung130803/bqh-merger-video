@@ -508,7 +508,8 @@ class FfmpegRunner:
                     pass
             if _tmp_dir is not None:
                 try:
-                    _tmp_dir.rmdir()
+                    import shutil
+                    shutil.rmtree(_tmp_dir, ignore_errors=True)
                 except OSError:
                     pass
 
@@ -544,23 +545,24 @@ class FfmpegRunner:
         if progress_cb is None:
             # Chạy đơn giản, không theo dõi tiến độ.
             try:
-                result = subprocess.run(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    creationflags=_no_window_flag(),
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise FfmpegError(f"Không chạy được ffmpeg: {exc}") from exc
+                try:
+                    result = subprocess.run(
+                        cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        creationflags=_no_window_flag(),
+                    )
+                except (OSError, subprocess.SubprocessError) as exc:
+                    raise FfmpegError(f"Không chạy được ffmpeg: {exc}") from exc
 
-            if result.returncode != 0:
-                err = result.stderr.decode("utf-8", "replace").strip()
-                tail = "\n".join(err.splitlines()[-12:])
+                if result.returncode != 0:
+                    err = result.stderr.decode("utf-8", "replace").strip()
+                    tail = "\n".join(err.splitlines()[-12:])
+                    raise FfmpegError(
+                        f"ffmpeg kết thúc với mã {result.returncode}:\n{tail}"
+                    )
+            finally:
                 _cleanup_tmp()
-                raise FfmpegError(
-                    f"ffmpeg kết thúc với mã {result.returncode}:\n{tail}"
-                )
-            _cleanup_tmp()
             return
 
         # Chạy có theo dõi tiến độ: thêm -progress pipe:1, đọc out_time.
@@ -571,43 +573,45 @@ class FfmpegRunner:
         total_us = max(1.0, out_dur * 1_000_000)
 
         import tempfile
-        # stderr ghi ra file tạm để tránh deadlock khi buffer đầy.
-        with tempfile.TemporaryFile(mode="w+") as errfile:
-            try:
-                proc = subprocess.Popen(
-                    prog_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=errfile,
-                    creationflags=_no_window_flag(),
-                    text=True,
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise FfmpegError(f"Không chạy được ffmpeg: {exc}") from exc
+        try:
+            # stderr ghi ra file tạm để tránh deadlock khi buffer đầy.
+            with tempfile.TemporaryFile(mode="w+") as errfile:
+                try:
+                    proc = subprocess.Popen(
+                        prog_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=errfile,
+                        creationflags=_no_window_flag(),
+                        text=True,
+                    )
+                except (OSError, subprocess.SubprocessError) as exc:
+                    raise FfmpegError(
+                        f"Không chạy được ffmpeg: {exc}") from exc
 
-            assert proc.stdout is not None
-            for line in proc.stdout:
-                line = line.strip()
-                if line.startswith(("out_time_us=", "out_time_ms=")):
-                    raw = line.split("=", 1)[1]
-                    try:
-                        val = float(raw)
-                    except ValueError:
-                        continue
-                    pct = max(0.0, min(1.0, val / total_us))
-                    try:
-                        progress_cb(pct)
-                    except Exception:
-                        pass
-            proc.wait()
-            if proc.returncode != 0:
-                errfile.seek(0)
-                err = errfile.read()
-                tail = "\n".join(err.splitlines()[-12:])
-                _cleanup_tmp()
-                raise FfmpegError(
-                    f"ffmpeg kết thúc với mã {proc.returncode}:\n{tail}"
-                )
-        _cleanup_tmp()
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    line = line.strip()
+                    if line.startswith(("out_time_us=", "out_time_ms=")):
+                        raw = line.split("=", 1)[1]
+                        try:
+                            val = float(raw)
+                        except ValueError:
+                            continue
+                        pct = max(0.0, min(1.0, val / total_us))
+                        try:
+                            progress_cb(pct)
+                        except Exception:
+                            pass
+                proc.wait()
+                if proc.returncode != 0:
+                    errfile.seek(0)
+                    err = errfile.read()
+                    tail = "\n".join(err.splitlines()[-12:])
+                    raise FfmpegError(
+                        f"ffmpeg kết thúc với mã {proc.returncode}:\n{tail}"
+                    )
+        finally:
+            _cleanup_tmp()
         try:
             progress_cb(1.0)
         except Exception:

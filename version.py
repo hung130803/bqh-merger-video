@@ -9,7 +9,7 @@ Người dùng bấm "Cập nhật bản mới" trong app sẽ tự tải .exe m
 """
 
 APP_NAME = "BQH Merger Video"
-APP_VERSION = "1.0.0"
+APP_VERSION = "1.0.1"
 
 # Repo GitHub để kiểm tra/tải bản cập nhật
 GITHUB_OWNER = "hung130803"
