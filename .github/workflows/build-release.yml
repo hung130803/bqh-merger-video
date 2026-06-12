@@ -1,0 +1,64 @@
+name: Build & Release BQH Merger Video
+
+# Tự chạy khi bạn đẩy một tag dạng v* (vd v1.0.1) lên GitHub.
+# GitHub sẽ tự build file .exe (kèm ffmpeg) rồi tạo Release đính kèm .exe.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:  # cho phép bấm chạy tay trên tab Actions
+
+permissions:
+  contents: write   # cần để tạo Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cài thư viện
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Tải ffmpeg (để đóng gói kèm)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-essentials_build.zip"
+          Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_dl
+          $bin = Get-ChildItem -Path ffmpeg_dl -Recurse -Filter ffmpeg.exe | Select-Object -First 1
+          $binDir = $bin.DirectoryName
+          Copy-Item "$binDir\ffmpeg.exe" .
+          Copy-Item "$binDir\ffprobe.exe" .
+          Write-Host "Da tai ffmpeg/ffprobe tu $binDir"
+
+      - name: Build .exe (kèm ffmpeg)
+        shell: pwsh
+        run: |
+          python -m PyInstaller --noconfirm --onefile --windowed `
+            --name "BQH_Merger_Video" `
+            --collect-all customtkinter `
+            --add-data "version.py;." `
+            --add-binary "ffmpeg.exe;." `
+            --add-binary "ffprobe.exe;." `
+            main.py
+
+      - name: Tạo Release và đính kèm .exe
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/BQH_Merger_Video.exe
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          body: |
+            Bản phát hành tự động BQH Merger Video ${{ github.ref_name }}.
+            Tải file BQH_Merger_Video.exe bên dưới về và chạy (đã kèm ffmpeg).

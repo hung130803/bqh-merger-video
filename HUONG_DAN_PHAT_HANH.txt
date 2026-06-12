@@ -1,47 +1,39 @@
 ================================================================
-  BQH MERGER VIDEO — HƯỚNG DẪN PHÁT HÀNH BẢN MỚI
+  BQH MERGER VIDEO — HƯỚNG DẪN PHÁT HÀNH (GitHub TỰ BUILD .EXE)
 ================================================================
 
->>> LẦN ĐẦU (chỉ làm 1 lần) <<<
-
-1. Tạo Release đầu tiên trên GitHub:
-   - Mở: https://github.com/hung130803/bqh-merger-video/releases
-   - Bấm "Create a new release"
-   - Choose a tag -> gõ: v1.0.0 -> "Create new tag"
-   - Release title: v1.0.0
-   - Kéo thả file: dist\BQH_Merger_Video.exe vào ô đính kèm
-   - Bấm "Publish release"
-
-   Xong! Giờ ai cũng tải .exe ở trang Releases về dùng được.
+CÁCH HOẠT ĐỘNG:
+  Bạn KHÔNG cần build .exe ở máy. Khi bạn đẩy một "tag phiên bản"
+  (vd v1.0.1) lên GitHub, GitHub tự build file .exe (đã kèm ffmpeg)
+  rồi tự tạo Release đính kèm .exe. Máy khác tải .exe ở Releases về
+  dùng, hoặc bấm "Cập nhật bản mới" trong app.
 
 
->>> MỖI LẦN NÂNG CẤP (sửa code xong) <<<
+>>> MỖI LẦN NÂNG CẤP — chỉ 2 việc <<<
 
-Bước 1: Mở file version.py, TĂNG số phiên bản:
-        APP_VERSION = "1.0.0"  ->  "1.0.1"  (lần sau "1.0.2"...)
+Bước 1: Sửa code xong, mở file version.py, TĂNG số phiên bản:
+        APP_VERSION = "1.0.0"  ->  "1.0.1"   (lần sau "1.0.2"...)
 
-Bước 2: Bấm đúp file build_exe.bat
-        -> tạo lại dist\BQH_Merger_Video.exe (đã kèm ffmpeg)
+Bước 2: Bấm đúp file  PHAT_HANH_BAN_MOI.bat
+        (file này tự: commit + push code, tạo tag, đẩy tag lên GitHub)
 
-Bước 3: Đẩy code lên GitHub. Mở PowerShell tại thư mục dự án, chạy:
-        git add -A
-        git commit -m "Mo ta thay doi"
-        git push
-
-Bước 4: Tạo Release mới trên GitHub:
-        - Releases -> "Draft a new release"
-        - Tag: v1.0.1  (TRÙNG số ở version.py, có chữ v phía trước)
-        - Title: v1.0.1
-        - Đính kèm file dist\BQH_Merger_Video.exe MỚI
-        - Publish release
-
-   => Máy người dùng mở app lần sau sẽ tự hiện nút
-      "Có bản mới — Cập nhật". Bấm vào là tự cập nhật.
+   => GitHub tu dong build .exe va tao Release. Theo doi tai:
+      https://github.com/hung130803/bqh-merger-video/actions
+   => Sau vai phut, ban moi xuat hien o:
+      https://github.com/hung130803/bqh-merger-video/releases
 
 
->>> 3 ĐIỀU QUAN TRỌNG <<<
-  1. Số ở version.py PHẢI tăng, và tag Release PHẢI khớp (1.0.1 <-> v1.0.1).
-  2. Tên file đính kèm PHẢI là: BQH_Merger_Video.exe
-  3. Bản .exe build bằng build_exe.bat đã KÈM ffmpeg -> máy khác khỏi cài.
+>>> NGƯỜI DÙNG MÁY KHÁC <<<
+  - Tải file BQH_Merger_Video.exe ở trang Releases về, chạy luôn
+    (đã kèm ffmpeg, không cần cài gì).
+  - Hoặc đang dùng app: bấm nút "Cập nhật bản mới" khi nó hiện ra.
+
+
+>>> LƯU Ý <<<
+  1. Số ở version.py PHẢI tăng mỗi lần (tag trùng số cũ sẽ bị từ chối).
+  2. Lần đầu, vào GitHub -> tab Settings -> Actions -> General ->
+     bật "Read and write permissions" (Workflow permissions) nếu
+     Release không tạo được.
+  3. Muốn build thử .exe ngay tại máy: bấm build_exe.bat (tùy chọn).
 
 ================================================================
