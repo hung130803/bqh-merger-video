@@ -153,6 +153,9 @@ class MainWindow(ctk.CTk):
         self._on_caption_source_change()
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self.bind("<F5>", self._on_refresh)
+        # Tự âm thầm kiểm tra bản mới khi mở app (chỉ hiện nút nếu có).
+        self._pending_update_url = ""
+        self.after(1500, self._auto_check_update)
 
     # =====================================================================
     # LAYOUT KHUNG
@@ -184,11 +187,12 @@ class MainWindow(ctk.CTk):
         right_box.grid(row=0, column=1, rowspan=2, sticky="e")
 
         self.update_btn = ctk.CTkButton(
-            right_box, text="⭳ Cập nhật bản mới", width=150,
-            fg_color=STOP_COLOR, hover_color=STOP_HOVER,
+            right_box, text="⭳ Có bản mới — Cập nhật", width=180,
+            fg_color="#16A34A", hover_color="#15803D",
             command=self._on_check_update,
         )
-        self.update_btn.grid(row=0, column=0, padx=(0, 10))
+        # Mặc định ẩn; chỉ hiện khi phát hiện có bản mới.
+        self._update_btn_box = right_box
 
         self.theme_switch = ctk.CTkSwitch(
             right_box, text="Chế độ sáng", command=self._on_toggle_theme
@@ -790,37 +794,72 @@ class MainWindow(ctk.CTk):
     def _on_toggle_theme(self) -> None:
         ctk.set_appearance_mode("light" if self.theme_switch.get() else "dark")
 
+    def _auto_check_update(self) -> None:
+        """Âm thầm kiểm tra bản mới khi mở app; chỉ hiện nút nếu có."""
+        from app.engine import updater
+
+        # Chỉ tự cập nhật được khi chạy dạng .exe
+        if not updater.is_frozen():
+            return
+
+        holder = {}
+
+        def _work():
+            holder["info"] = updater.check_for_update()
+
+        def _poll():
+            if t.is_alive():
+                self.after(300, _poll)
+                return
+            info = holder.get("info")
+            if info and info.ok and info.has_update and info.download_url:
+                self._pending_update_url = info.download_url
+                self.update_btn.configure(
+                    text=f"⭳ Có bản mới {info.latest_version} — Cập nhật")
+                self.update_btn.grid(row=0, column=0, padx=(0, 10))
+
+        t = threading.Thread(target=_work, daemon=True)
+        t.start()
+        self.after(300, _poll)
+
     def _on_check_update(self) -> None:
-        """Kiểm tra & tải bản mới từ GitHub (chạy trên luồng nền)."""
+        """Bấm nút cập nhật (chỉ hiện khi đã biết có bản mới) -> tải & cài."""
+        from tkinter import messagebox
+
+        if not self._pending_update_url:
+            messagebox.showinfo("Cập nhật", "Bạn đang dùng bản mới nhất.",
+                                parent=self)
+            return
+        if messagebox.askyesno(
+            "Cập nhật",
+            "Tải và cài bản mới ngay bây giờ?\n"
+            "Ứng dụng sẽ tự đóng và mở lại.", parent=self):
+            self._do_download_update(self._pending_update_url)
+
+    def _do_download_update(self, url: str) -> None:
         from tkinter import messagebox
         from app.engine import updater
 
-        self.update_btn.configure(state="disabled", text="Đang kiểm tra...")
-
-        result_holder = {}
+        self.update_btn.configure(state="disabled", text="Đang tải bản mới...")
+        holder = {}
 
         def _work():
-            chk = updater.check_for_update()
-            if chk.ok and chk.changed:
-                result_holder["res"] = updater.pull_update()
-            else:
-                result_holder["res"] = chk
+            holder["res"] = updater.download_and_apply(url)
 
         def _poll():
             if t.is_alive():
                 self.after(200, _poll)
                 return
-            self.update_btn.configure(state="normal",
-                                      text="⭳ Cập nhật bản mới")
-            res = result_holder.get("res")
-            if res is None:
-                return
-            if res.ok and res.changed:
-                messagebox.showinfo("Cập nhật", res.message, parent=self)
-            elif res.ok:
-                messagebox.showinfo("Cập nhật", res.message, parent=self)
+            res = holder.get("res")
+            if res is not None and res.ok and res.has_update:
+                updater.exit_app()  # thoát để script thay file .exe
             else:
-                messagebox.showerror("Cập nhật", res.message, parent=self)
+                self.update_btn.configure(state="normal",
+                                          text="⭳ Có bản mới — Cập nhật")
+                messagebox.showerror(
+                    "Cập nhật",
+                    res.message if res else "Cập nhật thất bại.",
+                    parent=self)
 
         t = threading.Thread(target=_work, daemon=True)
         t.start()
